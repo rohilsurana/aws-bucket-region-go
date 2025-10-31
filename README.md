@@ -144,6 +144,61 @@ type HTTPClient interface {
 }
 ```
 
+### Error Handling
+
+The package returns structured errors that provide context about failures:
+
+```go
+package main
+
+import (
+    "context"
+    "errors"
+    "fmt"
+    "log"
+
+    "github.com/rohilsurana/aws-bucket-region-go"
+)
+
+func main() {
+    region, err := s3region.GetBucketRegion(context.Background(), "my-bucket")
+    if err != nil {
+        // Check for specific error types using errors.Is()
+        if errors.Is(err, s3region.ErrBucketNotFound) {
+            log.Println("Bucket does not exist")
+            return
+        }
+        if errors.Is(err, s3region.ErrInvalidBucketName) {
+            log.Println("Invalid bucket name format")
+            return
+        }
+
+        // Access structured error details
+        var e *s3region.Error
+        if errors.As(err, &e) {
+            fmt.Printf("Operation: %s\n", e.Op)
+            fmt.Printf("Input: %s\n", e.Input)
+            fmt.Printf("Bucket: %s\n", e.BucketName)
+        }
+
+        log.Fatal(err)
+    }
+
+    fmt.Printf("Region: %s\n", region)
+}
+```
+
+**Available error types:**
+- `ErrInvalidBucketName` - Bucket name doesn't follow AWS naming rules
+- `ErrBucketNotFound` - Bucket doesn't exist (HTTP 404)
+- `ErrRegionHeaderNotFound` - Region header missing from response
+
+**Structured Error fields:**
+- `Op` - Operation name (e.g., "GetBucketRegion", "GetBucketRegionByName")
+- `Input` - Original input provided by user
+- `BucketName` - Extracted bucket name
+- `Err` - Underlying error
+
 ## API
 
 ### `GetBucketRegion(ctx context.Context, input string, opts ...Option) (string, error)`

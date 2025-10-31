@@ -2,6 +2,7 @@ package s3region
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"net/http"
 	"net/http/httptest"
@@ -242,6 +243,90 @@ func (m *mockHTTPClient) Do(req *http.Request) (*http.Response, error) {
 	resp.Header.Set("x-amz-bucket-region", m.region)
 
 	return resp, nil
+}
+
+func TestStructuredError(t *testing.T) {
+	tests := []struct {
+		name           string
+		input          string
+		wantOp         string
+		wantBucketName string
+		wantInput      string
+		wantBaseErr    error
+	}{
+		{
+			name:           "invalid bucket name",
+			input:          "MY-BUCKET",
+			wantOp:         "GetBucketRegionByName",
+			wantBucketName: "MY-BUCKET",
+			wantInput:      "MY-BUCKET",
+			wantBaseErr:    ErrInvalidBucketName,
+		},
+		{
+			name:           "bucket not found",
+			input:          "this-bucket-definitely-does-not-exist-12345",
+			wantOp:         "GetBucketRegionByName",
+			wantBucketName: "this-bucket-definitely-does-not-exist-12345",
+			wantInput:      "this-bucket-definitely-does-not-exist-12345",
+			wantBaseErr:    ErrBucketNotFound,
+		},
+		{
+			name:           "s3 uri with invalid bucket",
+			input:          "s3://MY-BUCKET",
+			wantOp:         "GetBucketRegionFromS3URI",
+			wantBucketName: "MY-BUCKET",
+			wantInput:      "s3://MY-BUCKET",
+			wantBaseErr:    ErrInvalidBucketName,
+		},
+		{
+			name:           "arn with invalid bucket",
+			input:          "arn:aws:s3:::MY-BUCKET",
+			wantOp:         "GetBucketRegionFromARN",
+			wantBucketName: "MY-BUCKET",
+			wantInput:      "arn:aws:s3:::MY-BUCKET",
+			wantBaseErr:    ErrInvalidBucketName,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			_, err := GetBucketRegion(context.Background(), tt.input)
+			if err == nil {
+				t.Fatal("expected error, got nil")
+			}
+
+			// Check if it's our structured Error type
+			var e *Error
+			if !errors.As(err, &e) {
+				t.Fatalf("expected *Error type, got %T", err)
+			}
+
+			// Verify error fields
+			if e.Op != tt.wantOp {
+				t.Errorf("Op = %q, want %q", e.Op, tt.wantOp)
+			}
+			if e.BucketName != tt.wantBucketName {
+				t.Errorf("BucketName = %q, want %q", e.BucketName, tt.wantBucketName)
+			}
+			if e.Input != tt.wantInput {
+				t.Errorf("Input = %q, want %q", e.Input, tt.wantInput)
+			}
+
+			// Verify we can still use errors.Is() for the base error
+			if !errors.Is(err, tt.wantBaseErr) {
+				t.Errorf("errors.Is() = false, want true for %v", tt.wantBaseErr)
+			}
+
+			// Verify error message contains useful info
+			errMsg := err.Error()
+			if !strings.Contains(errMsg, tt.wantOp) {
+				t.Errorf("error message %q should contain operation %q", errMsg, tt.wantOp)
+			}
+			if !strings.Contains(errMsg, tt.wantInput) {
+				t.Errorf("error message %q should contain input %q", errMsg, tt.wantInput)
+			}
+		})
+	}
 }
 
 func TestGetBucketRegionInvalidInputs(t *testing.T) {
