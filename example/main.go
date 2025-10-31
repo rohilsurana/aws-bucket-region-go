@@ -4,7 +4,9 @@ import (
 	"context"
 	"fmt"
 	"log"
+	"net/http"
 	"os"
+	"time"
 
 	s3region "github.com/rohilsurana/aws-bucket-region-go"
 )
@@ -22,10 +24,24 @@ func main() {
 
 	input := os.Args[1]
 
+	// Example 1: Using default HTTP client
 	region, err := s3region.GetBucketRegion(context.Background(), input)
 	if err != nil {
 		log.Fatalf("Error: %v", err)
 	}
-
 	fmt.Printf("Bucket region: %s\n", region)
+
+	// Example 2: Using custom HTTP client with timeout
+	customClient := &http.Client{
+		Timeout: 5 * time.Second,
+	}
+	region2, err := s3region.GetBucketRegion(
+		context.Background(),
+		input,
+		s3region.WithHTTPClient(customClient),
+	)
+	if err != nil {
+		log.Fatalf("Error with custom client: %v", err)
+	}
+	fmt.Printf("Bucket region (custom client): %s\n", region2)
 }

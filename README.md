@@ -28,6 +28,8 @@ go get github.com/rohilsurana/aws-bucket-region-go
 
 ## Usage
 
+### Basic Usage
+
 ```go
 package main
 
@@ -46,6 +48,49 @@ func main() {
         log.Fatal(err)
     }
     fmt.Printf("Bucket region: %s\n", region)
+}
+```
+
+### Using Custom HTTP Client
+
+You can provide a custom HTTP client for advanced use cases like custom timeouts, proxies, or TLS configuration:
+
+```go
+package main
+
+import (
+    "context"
+    "fmt"
+    "log"
+    "net/http"
+    "time"
+
+    "github.com/rohilsurana/aws-bucket-region-go"
+)
+
+func main() {
+    // Create a custom HTTP client with 5-second timeout
+    customClient := &http.Client{
+        Timeout: 5 * time.Second,
+    }
+
+    region, err := s3region.GetBucketRegion(
+        context.Background(),
+        "my-bucket",
+        s3region.WithHTTPClient(customClient),
+    )
+    if err != nil {
+        log.Fatal(err)
+    }
+    fmt.Printf("Bucket region: %s\n", region)
+}
+```
+
+You can also implement the `HTTPClient` interface for custom behavior:
+
+```go
+type HTTPClient interface {
+    Do(req *http.Request) (*http.Response, error)
 }
 ```
 
@@ -76,13 +121,14 @@ go run main.go https://s3.us-west-2.amazonaws.com/my-bucket/path
 
 ## API
 
-### `GetBucketRegion(ctx context.Context, input string) (string, error)`
+### `GetBucketRegion(ctx context.Context, input string, opts ...Option) (string, error)`
 
 Main function that automatically detects the input format and returns the bucket region. Supports all formats below.
 
 **Parameters:**
 - `ctx`: Context for timeout and cancellation control
 - `input`: Any S3 identifier format (bucket name, S3 URI, ARN, or HTTP/HTTPS URL)
+- `opts`: Optional configuration options (e.g., `WithHTTPClient`)
 
 **Returns:**
 - `string`: The AWS region code (e.g., `us-west-2`)
@@ -92,31 +138,34 @@ Main function that automatically detects the input format and returns the bucket
 
 Power users can call these directly if they know the input format:
 
-#### `GetBucketRegionByName(ctx context.Context, bucketName string) (string, error)`
+#### `GetBucketRegionByName(ctx context.Context, bucketName string, opts ...Option) (string, error)`
 
 Takes a bucket name and returns its region.
 
 **Parameters:**
 - `ctx`: Context for timeout and cancellation control
 - `bucketName`: S3 bucket name (e.g., `my-bucket`)
+- `opts`: Optional configuration options
 
-#### `GetBucketRegionFromS3URI(ctx context.Context, uri string) (string, error)`
+#### `GetBucketRegionFromS3URI(ctx context.Context, uri string, opts ...Option) (string, error)`
 
 Extracts bucket name from S3 URI and returns its region.
 
 **Parameters:**
 - `ctx`: Context for timeout and cancellation control
 - `uri`: S3 URI (e.g., `s3://my-bucket` or `s3://my-bucket/path/to/object`)
+- `opts`: Optional configuration options
 
-#### `GetBucketRegionFromARN(ctx context.Context, arn string) (string, error)`
+#### `GetBucketRegionFromARN(ctx context.Context, arn string, opts ...Option) (string, error)`
 
 Extracts bucket name from AWS ARN and returns its region.
 
 **Parameters:**
 - `ctx`: Context for timeout and cancellation control
 - `arn`: AWS S3 ARN (e.g., `arn:aws:s3:::my-bucket` or `arn:aws:s3:::my-bucket/path`)
+- `opts`: Optional configuration options
 
-#### `GetBucketRegionFromHTTPURL(ctx context.Context, url string) (string, error)`
+#### `GetBucketRegionFromHTTPURL(ctx context.Context, url string, opts ...Option) (string, error)`
 
 Extracts bucket name from HTTP/HTTPS URL and returns its region. Supports both virtual-hosted-style and path-style URLs.
 
@@ -126,6 +175,19 @@ Extracts bucket name from HTTP/HTTPS URL and returns its region. Supports both v
   - Virtual-hosted: `https://my-bucket.s3.amazonaws.com/path/to/object`
   - Path-style: `https://s3.amazonaws.com/my-bucket/path/to/object`
   - Path-style with region: `https://s3.us-west-2.amazonaws.com/my-bucket/path/to/object`
+- `opts`: Optional configuration options
+
+### Configuration Options
+
+#### `WithHTTPClient(client HTTPClient) Option`
+
+Sets a custom HTTP client for S3 requests. If not provided, `http.DefaultClient` is used.
+
+**Example:**
+```go
+customClient := &http.Client{Timeout: 10 * time.Second}
+region, err := s3region.GetBucketRegion(ctx, "my-bucket", s3region.WithHTTPClient(customClient))
+```
 
 ### Error Variables
 

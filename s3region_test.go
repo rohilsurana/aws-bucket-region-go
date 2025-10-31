@@ -2,6 +2,7 @@ package s3region
 
 import (
 	"context"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -195,6 +196,52 @@ func TestGetBucketRegion(t *testing.T) {
 			t.Logf("GetBucketRegion(%s) = %s", tt.input, region)
 		})
 	}
+}
+
+func TestGetBucketRegionWithCustomHTTPClient(t *testing.T) {
+	// Create a mock HTTP client that returns a specific region
+	mockClient := &mockHTTPClient{
+		region: "us-west-1",
+	}
+
+	region, err := GetBucketRegion(context.Background(), "test-bucket", WithHTTPClient(mockClient))
+	if err != nil {
+		t.Fatalf("GetBucketRegion() with custom client error = %v", err)
+	}
+
+	if region != "us-west-1" {
+		t.Errorf("GetBucketRegion() with custom client = %v, want %v", region, "us-west-1")
+	}
+
+	// Verify the mock client was called
+	if !mockClient.called {
+		t.Error("Custom HTTP client was not called")
+	}
+}
+
+// mockHTTPClient is a mock implementation of HTTPClient for testing
+type mockHTTPClient struct {
+	region string
+	called bool
+}
+
+func (m *mockHTTPClient) Do(req *http.Request) (*http.Response, error) {
+	m.called = true
+
+	// Verify it's a HEAD request
+	if req.Method != http.MethodHead {
+		return nil, fmt.Errorf("expected HEAD request, got %s", req.Method)
+	}
+
+	// Create a mock response with the specified region
+	resp := &http.Response{
+		StatusCode: http.StatusOK,
+		Header:     http.Header{},
+		Body:       http.NoBody,
+	}
+	resp.Header.Set("x-amz-bucket-region", m.region)
+
+	return resp, nil
 }
 
 func TestGetBucketRegionInvalidInputs(t *testing.T) {
