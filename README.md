@@ -22,13 +22,57 @@ This package performs a HEAD request to an S3 bucket URL and extracts the region
 
 ## Installation
 
+### As a Library
+
 ```bash
 go get github.com/rohilsurana/aws-bucket-region-go
 ```
 
+### As a CLI Tool
+
+```bash
+go install github.com/rohilsurana/aws-bucket-region-go/cmd/s3region@latest
+```
+
 ## Usage
 
-### Basic Usage
+### CLI Usage
+
+Once installed, you can use the `s3region` command:
+
+```bash
+# Basic usage
+s3region my-bucket
+
+# With S3 URI
+s3region s3://my-bucket/path/to/object
+
+# With AWS ARN
+s3region arn:aws:s3:::my-bucket
+
+# With HTTP URL
+s3region https://my-bucket.s3.amazonaws.com/object
+
+# With custom timeout
+s3region -timeout 5s my-bucket
+
+# Show help
+s3region -help
+
+# Show version
+s3region -version
+```
+
+**Output:** The CLI prints only the region code (e.g., `us-west-2`) to stdout, making it easy to use in scripts:
+
+```bash
+REGION=$(s3region my-bucket)
+echo "Bucket is in region: $REGION"
+```
+
+### Library Usage
+
+#### Basic Usage
 
 ```go
 package main
@@ -92,31 +136,6 @@ You can also implement the `HTTPClient` interface for custom behavior:
 type HTTPClient interface {
     Do(req *http.Request) (*http.Response, error)
 }
-```
-
-## Example
-
-Run the example with any supported format:
-
-```bash
-cd example
-
-# Bucket name
-go run main.go my-bucket
-go run main.go my-bucket/path/to/object
-
-# S3 URI
-go run main.go s3://my-bucket/path/to/object
-
-# AWS ARN
-go run main.go arn:aws:s3:::my-bucket/path
-
-# Virtual-hosted-style URL
-go run main.go https://my-bucket.s3.amazonaws.com/path/to/object
-
-# Path-style URL
-go run main.go https://s3.amazonaws.com/my-bucket/path/to/object
-go run main.go https://s3.us-west-2.amazonaws.com/my-bucket/path
 ```
 
 ## API
