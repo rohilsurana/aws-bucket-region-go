@@ -3,6 +3,7 @@ package s3region
 import (
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 )
 
@@ -191,6 +192,62 @@ func TestGetBucketRegion(t *testing.T) {
 			}
 
 			t.Logf("GetBucketRegion(%s) = %s", tt.input, region)
+		})
+	}
+}
+
+func TestGetBucketRegionInvalidInputs(t *testing.T) {
+	tests := []struct {
+		name    string
+		input   string
+		wantErr bool
+	}{
+		// Invalid bucket names
+		{"uppercase bucket", "MY-BUCKET", true},
+		{"bucket with underscore", "my_bucket", true},
+		{"too short", "ab", true},
+		{"empty string", "", true},
+		{"starts with hyphen", "-mybucket", true},
+		{"ends with dot", "mybucket.", true},
+		{"consecutive dots", "my..bucket", true},
+		{"ip address", "192.168.1.1", true},
+
+		// Invalid URLs
+		{"non-s3 url with underscore", "https://my_site.com/sd", true},
+		{"non-s3 url uppercase", "https://Google.com", true},
+
+		// Empty after parsing
+		{"empty s3 uri", "s3://", true},
+		{"empty arn", "arn:aws:s3:::", true},
+
+		// Injection attempts (should be caught by validation)
+		{"injection with @", "bucket@google.com", true},
+		{"injection with //safe", "bucket//google.com", false}, // Parses as "bucket", safe
+
+		// Valid inputs (might fail with network error but not validation error)
+		{"valid bucket", "my-bucket", false},
+		{"valid s3 uri", "s3://my-bucket", false},
+		{"path traversal safe", "my-bucket/../../google.com", false}, // Parses as "my-bucket"
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			_, err := GetBucketRegion(tt.input)
+
+			if tt.wantErr {
+				// Should get a validation error (ErrInvalidBucketName)
+				if err == nil {
+					t.Errorf("GetBucketRegion(%q) expected error, got nil", tt.input)
+				} else if !strings.Contains(err.Error(), "invalid S3 bucket name") {
+					t.Errorf("GetBucketRegion(%q) expected validation error, got: %v", tt.input, err)
+				}
+			} else {
+				// Valid inputs might fail with other errors (network, bucket not found)
+				// but should NOT fail with validation error
+				if err != nil && strings.Contains(err.Error(), "invalid S3 bucket name") {
+					t.Errorf("GetBucketRegion(%q) unexpected validation error: %v", tt.input, err)
+				}
+			}
 		})
 	}
 }
