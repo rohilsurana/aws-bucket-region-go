@@ -4,7 +4,12 @@ A simple Go package to detect AWS S3 bucket region without requiring AWS SDK or 
 
 ## How it works
 
-This package performs a HEAD request to an S3 bucket URL and extracts the region from the `x-amz-bucket-region` HTTP response header.
+This package performs a HEAD request to an S3 bucket URL and extracts the region from the `x-amz-bucket-region` HTTP response header. This uses the [AWS S3 HeadBucket API](https://docs.aws.amazon.com/AmazonS3/latest/API/API_HeadBucket.html) which returns the bucket's region in the response headers.
+
+**Note:** Since this makes an actual HTTP HEAD request to AWS servers:
+- There will be network latency (typically 100-500ms depending on your location and the bucket's region)
+- Requires network access to `*.s3.amazonaws.com`
+- No AWS credentials or SDK required
 
 ## Supported Formats
 
