@@ -1,6 +1,7 @@
 package s3region
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"net/http"
@@ -81,14 +82,19 @@ func isValidBucketName(name string) bool {
 
 // GetBucketRegionByName takes a bucket name and returns its region by constructing
 // the S3 URL and performing a HEAD request to extract the x-amz-bucket-region header.
-func GetBucketRegionByName(bucketName string) (string, error) {
+func GetBucketRegionByName(ctx context.Context, bucketName string) (string, error) {
 	if !isValidBucketName(bucketName) {
 		return "", fmt.Errorf("%w: %s", ErrInvalidBucketName, bucketName)
 	}
 
 	url := fmt.Sprintf("https://%s.s3.amazonaws.com", bucketName)
 
-	resp, err := http.Head(url)
+	req, err := http.NewRequestWithContext(ctx, http.MethodHead, url, nil)
+	if err != nil {
+		return "", fmt.Errorf("failed to create request: %w", err)
+	}
+
+	resp, err := http.DefaultClient.Do(req)
 	if err != nil {
 		return "", fmt.Errorf("failed to perform HEAD request: %w", err)
 	}
@@ -107,24 +113,24 @@ func GetBucketRegionByName(bucketName string) (string, error) {
 
 // GetBucketRegionFromARN extracts the bucket name from an AWS S3 ARN and returns its region.
 // Accepts ARN format: arn:aws:s3:::bucket-name or arn:aws:s3:::bucket-name/path/to/object
-func GetBucketRegionFromARN(arn string) (string, error) {
+func GetBucketRegionFromARN(ctx context.Context, arn string) (string, error) {
 	bucketName := strings.TrimPrefix(arn, "arn:aws:s3:::")
 	// Remove any path after bucket name
 	if idx := strings.Index(bucketName, "/"); idx != -1 {
 		bucketName = bucketName[:idx]
 	}
-	return GetBucketRegionByName(bucketName)
+	return GetBucketRegionByName(ctx, bucketName)
 }
 
 // GetBucketRegionFromS3URI extracts the bucket name from an S3 URI and returns its region.
 // Accepts S3 URI format: s3://bucket-name or s3://bucket-name/path/to/object
-func GetBucketRegionFromS3URI(uri string) (string, error) {
+func GetBucketRegionFromS3URI(ctx context.Context, uri string) (string, error) {
 	bucketName := strings.TrimPrefix(uri, "s3://")
 	// Remove any path after bucket name
 	if idx := strings.Index(bucketName, "/"); idx != -1 {
 		bucketName = bucketName[:idx]
 	}
-	return GetBucketRegionByName(bucketName)
+	return GetBucketRegionByName(ctx, bucketName)
 }
 
 // GetBucketRegionFromHTTPURL extracts the bucket name from an HTTP/HTTPS URL and returns its region.
@@ -132,7 +138,7 @@ func GetBucketRegionFromS3URI(uri string) (string, error) {
 // - Virtual-hosted: https://bucket-name.s3.amazonaws.com/path/to/object
 // - Path-style: https://s3.amazonaws.com/bucket-name/path/to/object
 // - Path-style with region: https://s3.us-west-2.amazonaws.com/bucket-name/path/to/object
-func GetBucketRegionFromHTTPURL(url string) (string, error) {
+func GetBucketRegionFromHTTPURL(ctx context.Context, url string) (string, error) {
 	// Remove protocol
 	url = strings.TrimPrefix(url, "https://")
 	url = strings.TrimPrefix(url, "http://")
@@ -150,7 +156,7 @@ func GetBucketRegionFromHTTPURL(url string) (string, error) {
 		// Extract bucket name from host (before .s3.)
 		if idx := strings.Index(host, ".s3"); idx != -1 {
 			bucketName := host[:idx]
-			return GetBucketRegionByName(bucketName)
+			return GetBucketRegionByName(ctx, bucketName)
 		}
 	}
 
@@ -161,11 +167,11 @@ func GetBucketRegionFromHTTPURL(url string) (string, error) {
 		if idx := strings.Index(path, "/"); idx != -1 {
 			bucketName = path[:idx]
 		}
-		return GetBucketRegionByName(bucketName)
+		return GetBucketRegionByName(ctx, bucketName)
 	}
 
 	// If we couldn't parse it, treat the host as bucket name
-	return GetBucketRegionByName(host)
+	return GetBucketRegionByName(ctx, host)
 }
 
 // GetBucketRegion is the main umbrella function that accepts any S3 identifier format
@@ -174,20 +180,20 @@ func GetBucketRegionFromHTTPURL(url string) (string, error) {
 // - S3 URI: s3://my-bucket or s3://my-bucket/path/to/object
 // - AWS ARN: arn:aws:s3:::my-bucket or arn:aws:s3:::my-bucket/path
 // - HTTP/HTTPS URL: https://my-bucket.s3.amazonaws.com or https://my-bucket.s3.amazonaws.com/path/to/object
-func GetBucketRegion(input string) (string, error) {
+func GetBucketRegion(ctx context.Context, input string) (string, error) {
 	// Handle AWS ARN format
 	if strings.HasPrefix(input, "arn:aws:s3:::") {
-		return GetBucketRegionFromARN(input)
+		return GetBucketRegionFromARN(ctx, input)
 	}
 
 	// Handle S3 URI format
 	if strings.HasPrefix(input, "s3://") {
-		return GetBucketRegionFromS3URI(input)
+		return GetBucketRegionFromS3URI(ctx, input)
 	}
 
 	// Handle HTTP/HTTPS URL format
 	if strings.HasPrefix(input, "http://") || strings.HasPrefix(input, "https://") {
-		return GetBucketRegionFromHTTPURL(input)
+		return GetBucketRegionFromHTTPURL(ctx, input)
 	}
 
 	// Handle plain bucket name with or without path
@@ -195,5 +201,5 @@ func GetBucketRegion(input string) (string, error) {
 	if idx := strings.Index(input, "/"); idx != -1 {
 		bucketName = input[:idx]
 	}
-	return GetBucketRegionByName(bucketName)
+	return GetBucketRegionByName(ctx, bucketName)
 }

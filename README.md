@@ -32,6 +32,7 @@ go get github.com/rohilsurana/aws-bucket-region-go
 package main
 
 import (
+    "context"
     "fmt"
     "log"
 
@@ -40,7 +41,7 @@ import (
 
 func main() {
     // Works with any format - bucket name, S3 URI, ARN, or HTTP/HTTPS URL
-    region, err := s3region.GetBucketRegion("my-bucket")
+    region, err := s3region.GetBucketRegion(context.Background(), "my-bucket")
     if err != nil {
         log.Fatal(err)
     }
@@ -75,11 +76,12 @@ go run main.go https://s3.us-west-2.amazonaws.com/my-bucket/path
 
 ## API
 
-### `GetBucketRegion(input string) (string, error)`
+### `GetBucketRegion(ctx context.Context, input string) (string, error)`
 
 Main function that automatically detects the input format and returns the bucket region. Supports all formats below.
 
 **Parameters:**
+- `ctx`: Context for timeout and cancellation control
 - `input`: Any S3 identifier format (bucket name, S3 URI, ARN, or HTTP/HTTPS URL)
 
 **Returns:**
@@ -90,32 +92,36 @@ Main function that automatically detects the input format and returns the bucket
 
 Power users can call these directly if they know the input format:
 
-#### `GetBucketRegionByName(bucketName string) (string, error)`
+#### `GetBucketRegionByName(ctx context.Context, bucketName string) (string, error)`
 
 Takes a bucket name and returns its region.
 
 **Parameters:**
+- `ctx`: Context for timeout and cancellation control
 - `bucketName`: S3 bucket name (e.g., `my-bucket`)
 
-#### `GetBucketRegionFromS3URI(uri string) (string, error)`
+#### `GetBucketRegionFromS3URI(ctx context.Context, uri string) (string, error)`
 
 Extracts bucket name from S3 URI and returns its region.
 
 **Parameters:**
+- `ctx`: Context for timeout and cancellation control
 - `uri`: S3 URI (e.g., `s3://my-bucket` or `s3://my-bucket/path/to/object`)
 
-#### `GetBucketRegionFromARN(arn string) (string, error)`
+#### `GetBucketRegionFromARN(ctx context.Context, arn string) (string, error)`
 
 Extracts bucket name from AWS ARN and returns its region.
 
 **Parameters:**
+- `ctx`: Context for timeout and cancellation control
 - `arn`: AWS S3 ARN (e.g., `arn:aws:s3:::my-bucket` or `arn:aws:s3:::my-bucket/path`)
 
-#### `GetBucketRegionFromHTTPURL(url string) (string, error)`
+#### `GetBucketRegionFromHTTPURL(ctx context.Context, url string) (string, error)`
 
 Extracts bucket name from HTTP/HTTPS URL and returns its region. Supports both virtual-hosted-style and path-style URLs.
 
 **Parameters:**
+- `ctx`: Context for timeout and cancellation control
 - `url`: HTTP/HTTPS URL in either format:
   - Virtual-hosted: `https://my-bucket.s3.amazonaws.com/path/to/object`
   - Path-style: `https://s3.amazonaws.com/my-bucket/path/to/object`

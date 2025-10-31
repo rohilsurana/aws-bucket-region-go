@@ -1,6 +1,7 @@
 package s3region
 
 import (
+	"context"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -169,7 +170,7 @@ func TestGetBucketRegion(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			// Test against real S3
-			region, err := GetBucketRegion(tt.input)
+			region, err := GetBucketRegion(context.Background(), tt.input)
 
 			if tt.wantErr {
 				if err == nil {
@@ -232,7 +233,7 @@ func TestGetBucketRegionInvalidInputs(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			_, err := GetBucketRegion(tt.input)
+			_, err := GetBucketRegion(context.Background(), tt.input)
 
 			if tt.wantErr {
 				// Should get a validation error (ErrInvalidBucketName)

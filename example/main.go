@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"log"
 	"os"
@@ -21,7 +22,7 @@ func main() {
 
 	input := os.Args[1]
 
-	region, err := s3region.GetBucketRegion(input)
+	region, err := s3region.GetBucketRegion(context.Background(), input)
 	if err != nil {
 		log.Fatalf("Error: %v", err)
 	}
