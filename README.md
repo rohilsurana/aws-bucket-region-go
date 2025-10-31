@@ -14,8 +14,6 @@ go get github.com/rohilsurana/aws-bucket-region-go
 
 ## Usage
 
-### Using bucket name
-
 ```go
 package main
 
@@ -27,22 +25,13 @@ import (
 )
 
 func main() {
-    region, err := s3region.GetBucketRegionByName("my-bucket")
+    // Works with any format - bucket name, S3 URI, ARN, or HTTP/HTTPS URL
+    region, err := s3region.GetBucketRegion("my-bucket")
     if err != nil {
         log.Fatal(err)
     }
     fmt.Printf("Bucket region: %s\n", region)
 }
-```
-
-### Using full URL
-
-```go
-region, err := s3region.GetBucketRegion("https://my-bucket.s3.amazonaws.com")
-if err != nil {
-    log.Fatal(err)
-}
-fmt.Printf("Bucket region: %s\n", region)
 ```
 
 ## Example
@@ -60,27 +49,51 @@ go run main.go https://my-bucket.s3.amazonaws.com/path/to/object
 
 ## API
 
-### `GetBucketRegionByName(bucketName string) (string, error)`
+### `GetBucketRegion(input string) (string, error)`
 
-Takes a bucket name and returns its region by constructing the S3 URL and performing a HEAD request.
+Main function that automatically detects the input format and returns the bucket region. Supports all formats below.
+
+**Parameters:**
+- `input`: Any S3 identifier format (bucket name, S3 URI, ARN, or HTTP/HTTPS URL)
+
+**Returns:**
+- `string`: The AWS region code (e.g., `us-west-2`)
+- `error`: Error if the request fails or the region header is missing
+
+### Format-Specific Functions
+
+Power users can call these directly if they know the input format:
+
+#### `GetBucketRegionByName(bucketName string) (string, error)`
+
+Takes a bucket name and returns its region.
 
 **Parameters:**
 - `bucketName`: S3 bucket name (e.g., `my-bucket`)
 
-**Returns:**
-- `string`: The AWS region code (e.g., `us-west-2`)
-- `error`: Error if the request fails or the region header is missing
+#### `GetBucketRegionFromS3URI(uri string) (string, error)`
 
-### `GetBucketRegion(url string) (string, error)`
-
-Performs a HEAD request to the given S3 URL and returns the bucket region.
+Extracts bucket name from S3 URI and returns its region.
 
 **Parameters:**
-- `url`: Full S3 bucket URL (e.g., `https://bucket-name.s3.amazonaws.com`)
+- `uri`: S3 URI (e.g., `s3://my-bucket` or `s3://my-bucket/path/to/object`)
 
-**Returns:**
-- `string`: The AWS region code (e.g., `us-west-2`)
-- `error`: Error if the request fails or the region header is missing
+#### `GetBucketRegionFromARN(arn string) (string, error)`
+
+Extracts bucket name from AWS ARN and returns its region.
+
+**Parameters:**
+- `arn`: AWS S3 ARN (e.g., `arn:aws:s3:::my-bucket` or `arn:aws:s3:::my-bucket/path`)
+
+#### `GetBucketRegionFromHTTPURL(url string) (string, error)`
+
+Extracts bucket name from HTTP/HTTPS URL and returns its region. Supports both virtual-hosted-style and path-style URLs.
+
+**Parameters:**
+- `url`: HTTP/HTTPS URL in either format:
+  - Virtual-hosted: `https://my-bucket.s3.amazonaws.com/path/to/object`
+  - Path-style: `https://s3.amazonaws.com/my-bucket/path/to/object`
+  - Path-style with region: `https://s3.us-west-2.amazonaws.com/my-bucket/path/to/object`
 
 ### Error Variables
 
