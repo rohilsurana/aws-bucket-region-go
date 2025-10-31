@@ -9,10 +9,83 @@ import (
 
 var ErrRegionHeaderNotFound = errors.New("x-amz-bucket-region header not found in response")
 var ErrBucketNotFound = errors.New("aws s3 bucket not found") // HEAD request returns 404
+var ErrInvalidBucketName = errors.New("invalid S3 bucket name")
+
+// isValidBucketName validates an S3 bucket name according to AWS naming rules.
+func isValidBucketName(name string) bool {
+	// Check length: must be between 3 and 63 characters
+	if len(name) < 3 || len(name) > 63 {
+		return false
+	}
+
+	// Must begin and end with a letter or number
+	first := name[0]
+	last := name[len(name)-1]
+	if !((first >= 'a' && first <= 'z') || (first >= '0' && first <= '9')) {
+		return false
+	}
+	if !((last >= 'a' && last <= 'z') || (last >= '0' && last <= '9')) {
+		return false
+	}
+
+	// Check characters and consecutive periods
+	prevDot := false
+	dotCount := 0
+	for i := 0; i < len(name); i++ {
+		c := name[i]
+		// Can only consist of lowercase letters, numbers, periods (.), and hyphens (-)
+		if !((c >= 'a' && c <= 'z') || (c >= '0' && c <= '9') || c == '.' || c == '-') {
+			return false
+		}
+
+		// Must not contain two adjacent periods
+		if c == '.' {
+			dotCount++
+			if prevDot {
+				return false
+			}
+			prevDot = true
+		} else {
+			prevDot = false
+		}
+	}
+
+	// Must not be formatted as an IP address (e.g., 192.168.5.4)
+	if dotCount == 3 {
+		parts := strings.Split(name, ".")
+		if len(parts) == 4 {
+			allNumbers := true
+			for _, part := range parts {
+				if len(part) == 0 {
+					allNumbers = false
+					break
+				}
+				for j := 0; j < len(part); j++ {
+					if part[j] < '0' || part[j] > '9' {
+						allNumbers = false
+						break
+					}
+				}
+				if !allNumbers {
+					break
+				}
+			}
+			if allNumbers {
+				return false
+			}
+		}
+	}
+
+	return true
+}
 
 // GetBucketRegionByName takes a bucket name and returns its region by constructing
 // the S3 URL and performing a HEAD request to extract the x-amz-bucket-region header.
 func GetBucketRegionByName(bucketName string) (string, error) {
+	if !isValidBucketName(bucketName) {
+		return "", fmt.Errorf("%w: %s", ErrInvalidBucketName, bucketName)
+	}
+
 	url := fmt.Sprintf("https://%s.s3.amazonaws.com", bucketName)
 
 	resp, err := http.Head(url)

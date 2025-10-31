@@ -118,6 +118,7 @@ Extracts bucket name from HTTP/HTTPS URL and returns its region. Supports both v
 
 ### Error Variables
 
+- `ErrInvalidBucketName`: Returned when the bucket name doesn't follow AWS S3 naming rules
 - `ErrRegionHeaderNotFound`: Returned when the `x-amz-bucket-region` header is not found
 - `ErrBucketNotFound`: Returned when the bucket does not exist (404 response)
 
