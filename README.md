@@ -6,6 +6,15 @@ A simple Go package to detect AWS S3 bucket region without requiring AWS SDK or 
 
 This package performs a HEAD request to an S3 bucket URL and extracts the region from the `x-amz-bucket-region` HTTP response header.
 
+## Supported Formats
+
+- **Bucket name**: `my-bucket` or `my-bucket/path/to/object`
+- **S3 URI**: `s3://my-bucket` or `s3://my-bucket/path/to/object`
+- **AWS ARN**: `arn:aws:s3:::my-bucket` or `arn:aws:s3:::my-bucket/path`
+- **Virtual-hosted-style URL**: `https://my-bucket.s3.amazonaws.com/path/to/object`
+- **Path-style URL**: `https://s3.amazonaws.com/my-bucket/path/to/object`
+- **Path-style URL with region**: `https://s3.us-west-2.amazonaws.com/my-bucket/path`
+
 ## Installation
 
 ```bash
@@ -36,15 +45,27 @@ func main() {
 
 ## Example
 
-Run the example with bucket name, s3:// URI, AWS ARN, or full URL (with or without object paths):
+Run the example with any supported format:
 
 ```bash
 cd example
+
+# Bucket name
 go run main.go my-bucket
 go run main.go my-bucket/path/to/object
+
+# S3 URI
 go run main.go s3://my-bucket/path/to/object
+
+# AWS ARN
 go run main.go arn:aws:s3:::my-bucket/path
+
+# Virtual-hosted-style URL
 go run main.go https://my-bucket.s3.amazonaws.com/path/to/object
+
+# Path-style URL
+go run main.go https://s3.amazonaws.com/my-bucket/path/to/object
+go run main.go https://s3.us-west-2.amazonaws.com/my-bucket/path
 ```
 
 ## API
